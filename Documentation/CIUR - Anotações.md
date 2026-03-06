@@ -1,5 +1,6 @@
 ![[Tarefas CIUR]]
 
+## Referências
 
 
 ## Etapas do desenvolvimento do projeto:
@@ -44,7 +45,7 @@
 1. Como os pacientes possuem no início apenas o [[CCN]], e não [[CC, CF, DBP]], foi pedido para que o processo inverso do PRIMEIRO MODELO fosse feito, tentando prever o [[CC, CF, DBP]] através do [[CCN]] fornecido no paciente
 2. Criação de um programa executável onde um usuário possa introduzir as medições de um paciente e verificar, de maneira barata se o paciente possui ou irá possuir CIUR
    -> O usuário deve poder escolher se o teste está sendo feito em um feto com menos de 20 semanas ou não, fazendo com que o programa não peça todas as informações, ou seja, se for antes de 20 semanas, o programa pedirá apenas o CCN, caso contrário, ele pedirá todas as informações, podendo deixar o CCN em branco caso não tenha ocorrido a medição
-
+3. Tentar prever em qual momento da gestação foi desenvolvido o CIUR
 
 
 
@@ -397,3 +398,8 @@ df_artigo = pd.DataFrame(resultados_artigo)
 print(df_artigo.to_markdown(index=False))
 ```
 
+
+### Criação do Código do Aplicativo
+#### Objetivo:
+
+Criar um aplicativo para o projeto CIUR contendo um seletor de período de gestação para que o modelo preveja se o feto terá CIUR ou se ele é CIUR positivo

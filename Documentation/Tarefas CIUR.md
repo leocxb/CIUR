@@ -17,6 +17,7 @@ kanban-plugin: board
 
 ## Feitas
 
+- [x] configurar Obsidian git ✅ 2026-03-05
 
 
 
