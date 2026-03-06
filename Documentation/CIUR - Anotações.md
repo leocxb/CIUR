@@ -46,6 +46,7 @@
 2. Criação de um programa executável onde um usuário possa introduzir as medições de um paciente e verificar, de maneira barata se o paciente possui ou irá possuir CIUR
    -> O usuário deve poder escolher se o teste está sendo feito em um feto com menos de 20 semanas ou não, fazendo com que o programa não peça todas as informações, ou seja, se for antes de 20 semanas, o programa pedirá apenas o CCN, caso contrário, ele pedirá todas as informações, podendo deixar o CCN em branco caso não tenha ocorrido a medição
 3. Tentar prever em qual momento da gestação foi desenvolvido o CIUR
+4. Escrever artigo sobre o projeto?
 
 
 
