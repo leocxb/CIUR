@@ -50,7 +50,17 @@
 
 
 
+## Dataset
 
+```dataview
+TABLE WITHOUT ID
+    cliente AS "👤 Cliente",
+    produto AS "📦 Produto",
+    valor_total AS "💸 Valor Total"
+FROM csv("Datasets/relatorio.csv")
+WHERE status != "cancelado"
+SORT valor_total DESC
+```
 
 
 
