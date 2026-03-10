@@ -48,6 +48,19 @@
 3. Tentar prever em qual momento da gestação foi desenvolvido o CIUR
 4. Escrever artigo sobre o projeto?
 
+### Modelo Bidirecional (Treinamento da Random Forest e XGBoost)
+- Após reunião, decidimos testar a criação de um modelo que tente prever [[CC, CF, DBP]]
+através do [[CCN]]. Ao implementar, fazemos o programa verificar todo o dataset para preencher o máximo possível de dados em branco, tentando aumentar o tamanho total. Através deste programa 
+
+
+
+
+
+
+
+
+
+
 
 
 ## Dataset
