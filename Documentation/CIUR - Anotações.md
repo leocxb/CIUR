@@ -1,7 +1,7 @@
 ![[Tarefas CIUR]]
 
 ## Referências
-
+[Hadlock]("C:\Users\Usuario\Downloads\hadlock1991.pdf")
 
 ## Etapas do desenvolvimento do projeto:
 
@@ -414,3 +414,175 @@ print(df_artigo.to_markdown(index=False))
 #### Objetivo:
 
 Criar um aplicativo para o projeto CIUR contendo um seletor de período de gestação para que o modelo preveja se o feto terá CIUR ou se ele é CIUR positivo
+
+## Código do Modelo Bidirecional
+
+```python
+import pandas as pd
+import numpy as np
+import joblib
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, accuracy_score, confusion_matrix
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
+print("=== FASE 1: CONSTRUINDO DATASET BIDIRECIONAL ===\n")
+df = pd.read_csv('accepted_PIDS_final_para_modelo.csv')
+
+# 1. Imputação Direta (Dos Ossos + IG para o CCN)
+# Adicionado 'IG no exame' nas features para melhorar a precisão da imputação
+df_treino_dir = df.dropna(subset=['CCN', 'CC', 'CF', 'DBP', 'IG no exame'])
+rf_dir = RandomForestRegressor(random_state=42, n_jobs=-1)
+rf_dir.fit(df_treino_dir[['CC', 'CF', 'DBP', 'IG no exame']], df_treino_dir['CCN'])
+
+mask_dir = df['CCN'].isnull() & df[['CC', 'CF', 'DBP', 'IG no exame']].notnull().all(axis=1)
+if mask_dir.sum() > 0:
+    df.loc[mask_dir, 'CCN'] = rf_dir.predict(df.loc[mask_dir, ['CC', 'CF', 'DBP', 'IG no exame']])
+print(f"-> CCNs resgatados com sucesso: {mask_dir.sum()}")
+
+# 2. Imputação Reversa (Do CCN + IG para os Ossos)
+df_treino_rev = df.dropna(subset=['CCN', 'CC', 'CF', 'DBP', 'IG no exame'])
+rf_rev = RandomForestRegressor(random_state=42, n_jobs=-1)
+rf_rev.fit(df_treino_rev[['CCN', 'IG no exame']], df_treino_rev[['CC', 'CF', 'DBP']])
+
+mask_rev = df['CCN'].notnull() & df['IG no exame'].notnull() & df[['CC', 'CF', 'DBP']].isnull().any(axis=1)
+if mask_rev.sum() > 0:
+    df.loc[mask_rev, ['CC', 'CF', 'DBP']] = rf_rev.predict(df.loc[mask_rev, ['CCN', 'IG no exame']])
+print(f"-> Biometrias precoces resgatadas com sucesso: {mask_rev.sum()}")
+
+df.to_csv('accepted_PIDS_SUPER_DATASET.csv', index=False)
+print("\n[+] 'accepted_PIDS_SUPER_DATASET.csv' salvo com sucesso!")
+
+
+print("\n=== FASE 2: TREINANDO O NOVO MODELO ===\n")
+df_tabela = pd.read_csv('Table1.csv')
+df['IG_arredondada'] = df['IG no exame'].apply(np.floor)
+df = df.merge(df_tabela, left_on='IG_arredondada', right_on='Menstrual Week', how='left')
+df['CIUR'] = (df[' (4) (2)'] < df['10th Percentile (g)']).astype(int)
+
+# ATENÇÃO: 'IG exame' e 'IG no exame' não estão mais na lista de remoção. 
+# A idade gestacional agora será usada no treinamento do XGBoost!
+colunas_remover = [
+    'PID', 'CIUR', ' (4) (2)', 'row_is_virtual', 'IG_arredondada',
+    'Menstrual Week', '3rd Percentile (g)', '10th Percentile (g)',
+    '50th Percentile (g)', '90th Percentile (g)', '97th Percentile (g)'
+]
+X = df.drop(columns=colunas_remover, errors='ignore')
+y = df['CIUR']
+
+# Separar treino e teste
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+# Configurar o modelo com o peso para não perder doentes
+razao = len(y_train[y_train == 0]) / len(y_train[y_train == 1])
+pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler()),
+    ('xgb', XGBClassifier(random_state=42, eval_metric='logloss', scale_pos_weight=razao))
+])
+
+print("Treinando o XGBoost... (Isso pode levar alguns segundos)")
+pipeline.fit(X_train, y_train)
+
+# Avaliar
+probs = pipeline.predict_proba(X_test)[:, 1]
+roc = roc_auc_score(y_test, probs)
+print(f"NOVO ROC AUC ALCANÇADO: {roc * 100:.2f}%\n")
+
+
+print("=== TABELA CLÍNICA DEFINITIVA PARA O ARTIGO ===\n")
+cortes = [0.50, 0.60, 0.70, 0.80, 0.90]
+resultados_artigo = []
+
+for c in cortes:
+    prev = (probs >= c).astype(int)
+    tn, fp, fn, tp = confusion_matrix(y_test, prev).ravel()
+    
+    especificidade = tn / (tn + fp) if (tn + fp) > 0 else 0
+    vpn = tn / (tn + fn) if (tn + fn) > 0 else 0 
+    
+    resultados_artigo.append({
+        'Corte': f"{c*100:.0f}%",
+        'Acurácia Global': f"{accuracy_score(y_test, prev) * 100:.2f}%",
+        'Sensibilidade': f"{recall_score(y_test, prev) * 100:.2f}%",
+        'Especificidade': f"{especificidade * 100:.2f}%",
+        'Precisão (VPP)': f"{precision_score(y_test, prev) * 100:.2f}%",
+        'VPN': f"{vpn * 100:.2f}%",
+        'F1-Score': f"{f1_score(y_test, prev) * 100:.2f}%"
+    })
+
+df_artigo = pd.DataFrame(resultados_artigo)
+print(df_artigo.to_markdown(index=False))
+
+# Substituir o modelo antigo pelo novo
+joblib.dump(pipeline, 'modelo_ciur_xgboost_final.pkl')
+print("\nArquivo 'modelo_ciur_xgboost_final.pkl' foi atualizado com sucesso!")
+```
+
+```python
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+import seaborn as sns
+import pandas as pd
+
+print("\n=== FASE 3: GERANDO GRÁFICOS PARA O ARTIGO ===")
+
+# ---------------------------------------------------------
+# 1. PLOTAR A CURVA ROC
+# ---------------------------------------------------------
+fpr, tpr, thresholds = roc_curve(y_test, probs)
+roc_auc = auc(fpr, tpr)
+
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'XGBoost (AUC = {roc_auc:.4f})')
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('Taxa de Falsos Positivos (1 - Especificidade)', fontsize=12)
+plt.ylabel('Taxa de Verdadeiros Positivos (Sensibilidade)', fontsize=12)
+plt.title('Curva ROC - Previsão de CIUR', fontsize=14, fontweight='bold')
+plt.legend(loc="lower right", fontsize=12)
+plt.grid(alpha=0.3)
+
+# Salvar a imagem em alta resolução (300 dpi é o padrão exigido por revistas médicas)
+plt.savefig('curva_roc_ciur.png', dpi=300, bbox_inches='tight')
+plt.close()
+print("-> Gráfico da Curva ROC salvo como 'curva_roc_ciur.png'")
+
+# ---------------------------------------------------------
+# 2. PLOTAR A IMPORTÂNCIA DAS VARIÁVEIS (FEATURE IMPORTANCE)
+# ---------------------------------------------------------
+# Extrair o modelo XGBoost de dentro do pipeline
+xgb_model = pipeline.named_steps['xgb']
+
+# Obter a importância das features calculada pela IA
+importancias = xgb_model.feature_importances_
+
+# Criar um DataFrame para vincular o nome da coluna com o seu peso
+df_importancias = pd.DataFrame({
+    'Variável': X.columns,
+    'Importância': importancias
+})
+
+# Ordenar da mais importante para a menos importante
+df_importancias = df_importancias.sort_values(by='Importância', ascending=False)
+
+# Plotar o gráfico de barras horizontais
+plt.figure(figsize=(10, 6))
+sns.barplot(x='Importância', y='Variável', data=df_importancias, palette='viridis')
+plt.title('Importância das Variáveis (Feature Importance) - XGBoost', fontsize=14, fontweight='bold')
+plt.xlabel('Impacto Relativo na Decisão do Modelo', fontsize=12)
+plt.ylabel('Variáveis Clínicas / Biométricas', fontsize=12)
+plt.grid(axis='x', alpha=0.3)
+
+# Salvar a imagem em alta resolução
+plt.savefig('importancia_variaveis_ciur.png', dpi=300, bbox_inches='tight')
+plt.close()
+print("-> Gráfico de Importância das Variáveis salvo como 'importancia_variaveis_ciur.png'\n")
+
+print("Visualizações concluídas com sucesso! Verifique a pasta do projeto.")
+```
+
