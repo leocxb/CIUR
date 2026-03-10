@@ -1,0 +1,20 @@
+# --- Dados e Binários Pesados ---
+# Impede que o CSV de 201 mil linhas tente subir e trave o Git
+*.csv
+*.xlsx
+*.xls
+*.pkl
+*.joblib
+
+# --- Jupyter Notebook ---
+# Ignora pastas de checkpoint e temporários do Jupyter
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+__pycache__/
+*.pyc
+
+# --- Sistema e Logs ---
+# Ignora arquivos de configuração local e logs de erro
+.DS_Store
+*.log
+.obsidian/workspace.json

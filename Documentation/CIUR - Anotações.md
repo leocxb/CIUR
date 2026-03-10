@@ -64,7 +64,7 @@ através do [[CCN]]. Ao implementar, fazemos o programa verificar todo o dataset
 
 ```dataviewjs
 // Defina aqui o caminho exato do seu arquivo dentro do Obsidian
-const caminho_do_arquivo = "CIUR/git CIUR/Models/accepted_PIDS_SUPER_DATASET.csv";
+const caminho_do_arquivo = "CIUR/Data Modeling/accepted_PIDS_SUPER_DATASET.csv";
 
 try {
     // Comando do DataviewJS para ler o CSV
