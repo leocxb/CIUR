@@ -62,14 +62,34 @@ através do [[CCN]]. Ao implementar, fazemos o programa verificar todo o dataset
 
 ## Dataset
 
-```dataview
-TABLE WITHOUT ID
-    cliente AS "👤 Cliente",
-    produto AS "📦 Produto",
-    valor_total AS "💸 Valor Total"
-FROM csv("Datasets/relatorio.csv")
-WHERE status != "cancelado"
-SORT valor_total DESC
+```dataviewjs
+// Defina aqui o caminho exato do seu arquivo dentro do Obsidian
+const caminho_do_arquivo = "CIUR/git CIUR/Models/accepted_PIDS_SUPER_DATASET.csv";
+
+try {
+    // Comando do DataviewJS para ler o CSV
+    const dados = await dv.io.csv(caminho_do_arquivo);
+    
+    // Pegando apenas as 100 primeiras linhas para não travar o computador
+    const amostra = dados.slice(0, 100);
+    
+    // Montando a tabela
+    dv.table(
+        ["🆔 PID", "📅 IG", "📏 CCN", "🧠 CC", "🦴 CF", "📏 DBP", "⚖️ Peso", "🤖 Imputado?"],
+        amostra.map(linha => [
+            linha["PID"],
+            linha["IG no exame"],
+            linha["CCN"],
+            linha["CC"],
+            linha["CF"],
+            linha["DBP"],
+            linha[" (4) (2)"],
+            linha["row_is_virtual"] == 1 ? "Sim" : "Não"
+        ])
+    );
+} catch (erro) {
+    dv.paragraph("⚠️ **Erro:** Não foi possível encontrar o arquivo. Verifique se a pasta 'Datasets' e o arquivo CSV estão com o nome exato no seu cofre do Obsidian.");
+}
 ```
 
 
