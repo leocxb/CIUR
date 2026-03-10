@@ -50,7 +50,11 @@
 
 ### Modelo Bidirecional (Treinamento da Random Forest e XGBoost)
 - Após reunião, decidimos testar a criação de um modelo que tente prever [[CC, CF, DBP]]
-através do [[CCN]]. Ao implementar, fazemos o programa verificar todo o dataset para preencher o máximo possível de dados em branco, tentando aumentar o tamanho total. Através deste programa 
+através do [[CCN]]. Ao implementar, fazemos o programa verificar todo o dataset para preencher o máximo possível de dados em branco, tentando aumentar o tamanho total. Através deste programa, conseguimos resgatar **59.311** pacientes através da predição dos dados ósseos pelo [[CCN]].
+- Criando um threshold, foi possível perceber melhora na decisão do programa, uma vez que o AUC aumentou 
+
+
+![[Pasted image 20260310143900.png|697]]
 
 
 
